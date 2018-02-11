@@ -16,17 +16,41 @@ nameservers = ["198.41.0.4","199.9.14.201","192.33.4.12","199.7.91.13","192.203.
 
 def getIp(hostname,recordType):
 
-    query = dns.message.make_query(hostname, recordType)
+    query = dns.message.make_query(hostname, recordType, want_dnssec=True)
     print "LEVEL 1---------------------------------------------------------"
     for servers in nameservers:
-        try:
-            ans = dns.query.udp(query,servers,timeout=0.5,port=53,one_rr_per_rrset=True)
+        #try:
+            ans = dns.query.udp(query,servers,port=53,one_rr_per_rrset=True)
+            #print ans
+            query2 = dns.message.make_query(".",dns.rdatatype.DNSKEY,want_dnssec=True)
+            ans2 = dns.query.udp(query2,servers)
+            print ans2.answer[0]
+            #print ans2
+            # print type(ans2.answer[0])
+            # print ans2.answer[0]
+            #
+            # print type(ans2.answer[1])
+            # print ans2.answer[1]
+
+            if not ans2:
+                print "Error"
+                name = dns.name.from_text(hostname)
+                try:
+                    dns.dnssec.validate(ans2.answer[0], ans2.answer[1],{name:ans2.answer[0]})
+                except dns.dnssec.ValidationFailure:
+                    print "DNSSec verification failed"
+            else:
+                print " Validated"
             break
-        except BaseException:
-            print "No response from server. Querying the next nameserver from list"
+        # except BaseException:
+        #     print "No response from server. Querying the next nameserver from list"
 
     tldServers = ans.additional
+    key = ans.authority
 
+    # print dns.dnssec.validate_rrsig(key)
+    # for k in key:
+    #     print k
     print "LEVEL 2---------------------------------------------------------"
     for server in tldServers:
         server = str(server)
