@@ -88,6 +88,8 @@ rootServers = ["198.41.0.4","199.9.14.201","192.33.4.12","199.7.91.13","192.203.
 #     #             print "Error in resolution"
 #
 # getIp(sys.argv[1], sys.argv[2])
+
+
 def getIp(hostname,recordType):
 
     for server in rootServers:
@@ -135,7 +137,7 @@ def getIp(hostname,recordType):
             print "Error"
 
     name = dns.name.from_text('edu.')
-    print name
+
     if len(tldKeyResponse.answer) == 2:
         try:
             dns.dnssec.validate(tldKeyResponse.answer[0],tldKeyResponse.answer[1],{name:tldKeyResponse.answer[0]})
@@ -146,5 +148,37 @@ def getIp(hostname,recordType):
         print "Error in DNS response"
 
     #-----------------------------------------------------------------------------------------------------------
+
+    authorServers = tldResponse.additional
+
+    for server in authorServers:
+        try:
+            server = str(server)
+            data = server.split(' ')
+
+            autQuery = dns.message.make_query(hostname, dns.rdatatype.A, want_dnssec=True)
+            autResponse = dns.query.udp(autQuery, data[-1])
+            print autResponse
+            autKeyQuery = dns.message.make_query("stonybrook.edu.", dns.rdatatype.DNSKEY, want_dnssec=True)
+            autKeyResponse = dns.query.udp(autKeyQuery, data[-1])
+            #print autKeyResponse
+
+            break
+        except:
+            print "Error"
+
+    name = dns.name.from_text('stonybrok.edu.')
+
+    if len(autKeyResponse.answer) == 2:
+        try:
+            dns.dnssec.validate(autKeyResponse.answer[0], autKeyResponse.answer[1], {name: autKeyResponse.answer[0]})
+            print "Validated"
+        except dns.dnssec.ValidationFailure:
+            print "Validation Failure"
+    else:
+        print "Error in DNS response"
+
+
+
 
 getIp(sys.argv[1], sys.argv[2])
