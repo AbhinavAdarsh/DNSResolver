@@ -118,67 +118,94 @@ def getIp(hostname,recordType):
     #-----------------------------------------------------------------------------------------------------------
 
     tldServers = rootResponse.additional
-    tldAuthority = rootResponse.authority
+    validate(hostname,tldServers)
+#     tldAuthority = rootResponse.authority
+#
+#     for server in tldServers:
+#         try:
+#             server = str(server)
+#             data = server.split(' ')
+#
+#             tldQuery = dns.message.make_query(hostname,dns.rdatatype.A,want_dnssec=True)
+#             tldResponse = dns.query.udp(tldQuery,data[-1])
+#             #print tldResponse
+#             tldKeyQuery = dns.message.make_query("edu.", dns.rdatatype.DNSKEY, want_dnssec=True)
+#             tldKeyResponse = dns.query.udp(tldKeyQuery, data[-1])
+# #            print tldKeyResponse
+#
+#             break
+#         except:
+#             print "Error"
+#
+#     name = dns.name.from_text('edu.')
+#
+#     if len(tldKeyResponse.answer) == 2:
+#         try:
+#             dns.dnssec.validate(tldKeyResponse.answer[0],tldKeyResponse.answer[1],{name:tldKeyResponse.answer[0]})
+#             print "Validated"
+#         except dns.dnssec.ValidationFailure:
+#             print "Validation Failure"
+#     else:
+#         print "Error in DNS response"
+#
+#     #-----------------------------------------------------------------------------------------------------------
+#
+#     authorServers = tldResponse.additional
+#
+#     for server in authorServers:
+#         try:
+#             server = str(server)
+#             data = server.split(' ')
+#
+#             autQuery = dns.message.make_query(hostname, dns.rdatatype.A, want_dnssec=True)
+#             autResponse = dns.query.udp(autQuery, data[-1])
+#             print autResponse
+#             autKeyQuery = dns.message.make_query("stonybrook.edu.", dns.rdatatype.DNSKEY, want_dnssec=True)
+#             autKeyResponse = dns.query.udp(autKeyQuery, data[-1])
+#             #print autKeyResponse
+#
+#             break
+#         except:
+#             print "Error"
+#
+#     name = dns.name.from_text('stonybrok.edu.')
+#
+#     if len(autKeyResponse.answer) == 2:
+#         try:
+#             dns.dnssec.validate(autKeyResponse.answer[0], autKeyResponse.answer[1], {name: autKeyResponse.answer[0]})
+#             print "Validated"
+#         except dns.dnssec.ValidationFailure:
+#             print "Validation Failure"
+#     else:
+#         print "Error in DNS response"
 
-    for server in tldServers:
+def validate(hostname,serverlist):
+
+    for server in serverlist:
         try:
             server = str(server)
             data = server.split(' ')
 
-            tldQuery = dns.message.make_query(hostname,dns.rdatatype.A,want_dnssec=True)
-            tldResponse = dns.query.udp(tldQuery,data[-1])
-            #print tldResponse
-            tldKeyQuery = dns.message.make_query("edu.", dns.rdatatype.DNSKEY, want_dnssec=True)
-            tldKeyResponse = dns.query.udp(tldKeyQuery, data[-1])
-#            print tldKeyResponse
+            query = dns.message.make_query(hostname, dns.rdatatype.A, want_dnssec=True)
+            response = dns.query.udp(query, data[-1])
 
+            keyQuery = dns.message.make_query("stonybrook.edu.", dns.rdatatype.DNSKEY, want_dnssec=True)
+            keyResponse = dns.query.udp(keyQuery, data[-1])
             break
-        except:
-            print "Error"
 
-    name = dns.name.from_text('edu.')
-
-    if len(tldKeyResponse.answer) == 2:
-        try:
-            dns.dnssec.validate(tldKeyResponse.answer[0],tldKeyResponse.answer[1],{name:tldKeyResponse.answer[0]})
-            print "Validated"
-        except dns.dnssec.ValidationFailure:
-            print "Validation Failure"
-    else:
-        print "Error in DNS response"
-
-    #-----------------------------------------------------------------------------------------------------------
-
-    authorServers = tldResponse.additional
-
-    for server in authorServers:
-        try:
-            server = str(server)
-            data = server.split(' ')
-
-            autQuery = dns.message.make_query(hostname, dns.rdatatype.A, want_dnssec=True)
-            autResponse = dns.query.udp(autQuery, data[-1])
-            print autResponse
-            autKeyQuery = dns.message.make_query("stonybrook.edu.", dns.rdatatype.DNSKEY, want_dnssec=True)
-            autKeyResponse = dns.query.udp(autKeyQuery, data[-1])
-            #print autKeyResponse
-
-            break
         except:
             print "Error"
 
     name = dns.name.from_text('stonybrok.edu.')
 
-    if len(autKeyResponse.answer) == 2:
+    if len(keyResponse.answer) == 2:
         try:
-            dns.dnssec.validate(autKeyResponse.answer[0], autKeyResponse.answer[1], {name: autKeyResponse.answer[0]})
+            dns.dnssec.validate(keyResponse.answer[0], keyResponse.answer[1], {name: keyResponse.answer[0]})
             print "Validated"
         except dns.dnssec.ValidationFailure:
             print "Validation Failure"
     else:
         print "Error in DNS response"
-
-
 
 
 getIp(sys.argv[1], sys.argv[2])
