@@ -1,3 +1,6 @@
+import time
+import digTool
+
 topSites = \
 ['reddit.com',
  'tmall.com' ,
@@ -26,4 +29,9 @@ topSites = \
  'baidu.com']
 
 
-#for site in topSites:
+for site in topSites:
+    startTime = time.time()
+    getIp(sys.argv[1], sys.argv[2])
+    print "Query time: %s ms" % ((time.time() - startTime) * 1000)
+
+

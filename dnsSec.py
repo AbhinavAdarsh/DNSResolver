@@ -6,15 +6,14 @@ import dnslib
 import socket
 import dns.dnssec
 
-#
-# # A(IP Address), NS (nameserver), MX (mail exchanger)
-# #my_resolver = dns.resolver.Resolver()
-# # my_resolver.nameservers = ['a.root-servers.net','b.root-servers.net','c.root-servers.net','d.root-servers.net','e.root-servers.net'
-# #                'f.root-servers.net','g.root-servers.net','h.root-servers.net','i.root-servers.net','j.root-servers.net'
-# #                'k.root-servers.net','l.root-servers.net','m.root-servers.net']
-#
 rootServers = ["198.41.0.4","199.9.14.201","192.33.4.12","199.7.91.13","192.203.230","192.5.5.241","192.112.36.4",
                "198.97.190.53","192.36.148.17","192.58.128.30","193.0.14.129","199.7.83.42","202.12.27.33"]
+
+rootKey = [
+    '257 3 8 AwEAAagAIKlVZrpC6Ia7gEzahOR+9W29 euxhJhVVLOyQbSEW0O8gcCjFFVQUTf6v 58fLjwBd0YI0EzrAcQqBGCzh/RStIoO8 g0NfnfL2MTJRkxoXbfDaUeVPQuYEhg37 NZWAJQ9VnMVDxP/VHL496M/QZxkjf5/E fucp2gaDX6RS6CXpoY68LsvPVjR0ZSwz z1apAzvN9dlzEheX7ICJBBtuA6G3LQpz W5hOA2hzCTMjJPJ8LbqF6dsV6DoBQzgu l0sGIcGOYl7OyQdXfZ57relSQageu+ip AdTTJ25AsRTAoub8ONGcLmqrAmRLKBP1 dfwhYB4N7knNnulqQxA+Uk1ihz0=',
+    '257 3 8 AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexT BAvkMgJzkKTOiW1vkIbzxeF3+/4RgWOq 7HrxRixHlFlExOLAJr5emLvN7SWXgnLh 4+B5xQlNVz8Og8kvArMtNROxVQuCaSnI DdD5LKyWbRd2n9WGe2R8PzgCmr3EgVLr jyBxWezF0jLHwVN8efS3rCj/EWgvIWgb 9tarpVUDK/b58Da+sqqls3eNbuv7pr+e oZG+SrDK6nWeL3c6H5Apxz7LjVc1uTId sIXxuOLYA4/ilBmSVIzuDWfdRUfhHdY6 +cn8HFRm+2hM8AnXGXws9555KrUB5qih ylGa8subX2Nn6UwNR1AkUTV74bU='
+]
+
 #
 # def getIp(hostname,recordType):
 #
@@ -100,12 +99,28 @@ def getIp(hostname,recordType):
 
             dnsKeyQuery = dns.message.make_query(".",dns.rdatatype.DNSKEY,want_dnssec=True)
             dnsResponse = dns.query.udp(dnsKeyQuery,server)
+
+            ans = dnsResponse.answer
+            rootRes = []
+
+            for data in ans[0]:
+                if '257' in str(data):
+                    rootRes.append(str(data))
+
+            # Validating root response is correct or not
+            if rootKey == rootRes:
+                print 'Matched with root'
+            else:
+                print 'DNSSec verification failed'
+                exit()
+
             name = dns.name.from_text('.')
 
+            # Validating DNSKey with RRSIG
             if len(dnsResponse.answer) == 2:
                 try:
                     dns.dnssec.validate(dnsResponse.answer[0],dnsResponse.answer[1],{name:dnsResponse.answer[0]})
-                    print "Validated"
+                    print "Validated at level 0"
                 except dns.dnssec.ValidationFailure:
                     print "Validation Failure"
             else:
@@ -117,8 +132,8 @@ def getIp(hostname,recordType):
 
     #-----------------------------------------------------------------------------------------------------------
 
-    tldServers = rootResponse.additional
-    validate(hostname,tldServers)
+    servers = rootResponse.additional
+    validate(hostname,servers,1)
 #     tldAuthority = rootResponse.authority
 #
 #     for server in tldServers:
@@ -179,7 +194,19 @@ def getIp(hostname,recordType):
 #     else:
 #         print "Error in DNS response"
 
-def validate(hostname,serverlist):
+def validate(hostname,serverlist,length):
+
+    data = hostname.split('.')
+    queryName = ''
+    x = 0
+    for d in reversed(data):
+        queryName = str(d) + '.' + queryName
+        x = x+1
+        if x == length:
+            break
+
+    print queryName
+    #exit()
 
     for server in serverlist:
         try:
@@ -188,24 +215,36 @@ def validate(hostname,serverlist):
 
             query = dns.message.make_query(hostname, dns.rdatatype.A, want_dnssec=True)
             response = dns.query.udp(query, data[-1])
-
-            keyQuery = dns.message.make_query("stonybrook.edu.", dns.rdatatype.DNSKEY, want_dnssec=True)
+            #print response
+            keyQuery = dns.message.make_query(queryName, dns.rdatatype.DNSKEY, want_dnssec=True)
             keyResponse = dns.query.udp(keyQuery, data[-1])
+            #print keyResponse
             break
 
         except:
             print "Error"
 
-    name = dns.name.from_text('stonybrok.edu.')
+    name = dns.name.from_text(queryName)
 
     if len(keyResponse.answer) == 2:
         try:
             dns.dnssec.validate(keyResponse.answer[0], keyResponse.answer[1], {name: keyResponse.answer[0]})
-            print "Validated"
+            print "Validated at level" + str(length)
         except dns.dnssec.ValidationFailure:
             print "Validation Failure"
+            exit()
     else:
         print "Error in DNS response"
+        exit()
 
 
-getIp(sys.argv[1], sys.argv[2])
+
+    serverlist = response.additional
+    validate(hostname,serverlist,length+1)
+
+
+def main():
+    getIp(sys.argv[1],sys.argv[2])
+
+if __name__ == '__main__':
+    main()
