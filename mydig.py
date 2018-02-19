@@ -121,6 +121,7 @@ import dns.query
 import dns.resolver
 import sys
 import time
+import csv
 
 topSites = \
 ['reddit.com',
@@ -159,6 +160,7 @@ def iterativeResolver(hostname,reqRecord,response):
 
     serverlist = rootServers
     x = 0
+    flag = 0
     while len(serverlist) > 0 and x < 4:
         x = x + 1
         for server in serverlist:
@@ -166,13 +168,16 @@ def iterativeResolver(hostname,reqRecord,response):
             data = server.split(' ')
             try:
                 query = dns.message.make_query(hostname,reqRecord)
-                response = dns.query.udp(query,data[-1])
+                response = dns.query.udp(query,data[-1],timeout=0.5)
                 serverlist = response.additional
+                flag = 1
                 break
 
             except BaseException:
-                print 'Error in iterative resolver'
+                print 'Server not responding. Trying the next server...'
 
+        if flag == 0:
+            exit()
         if len(response.answer) != 0:
 
             answer = str(response.answer[0])
@@ -191,33 +196,41 @@ def iterativeResolver(hostname,reqRecord,response):
             serverlist = iterativeResolver(data[-1],'A',response)
 
 
-# def measureTime():
-#     myDict = {}
-#     for url in topSites:
-#         sTime = time.time()
-#         for i in range(1):
-#             getIp(url,'A')
-#         elapseTime = (time.time() - sTime) * 1000
-#         elapseTime = elapseTime/10
-#         myDict[url] = elapseTime
-#
-#     output = open("Output.txt", "w")
-#     print '---------------------'
-#     for d in myDict:
-#         # print d, myDict[d]
-#         # print '---------------------'
-#         output.write(d)
-#         output.write(myDict[d])
-#         output.close()
+def measureTime():
+    myDict = {}
+    totalTime = 0
+    for url in topSites:
+        sTime = time.time()
+        for i in range(10):
+            #iterativeResolver(url,dns.rdatatype.A,'')
+            googleNameServer(url, dns.rdatatype.A, '')
+        elapseTime = (time.time() - sTime) * 1000
+        elapseTime = elapseTime/10
+        myDict[url] = elapseTime
+        totalTime += elapseTime
+        print str(url)+","+str(elapseTime)
+
+    print totalTime
+
+
+def googleNameServer(domain, queryType, serverIP):
+    mResolver = dns.resolver.Resolver()
+
+    mResolver.nameservers = [str('130.245.255.4')]
+    while True:
+        try:
+            ans = mResolver.query(domain, queryType)
+        except:
+            pass
+        else:
+            return ans
 
 def main():
 
     if len(sys.argv) != 3:
         print 'Error: Wrong number of arguments provided'
         exit()
-    global question
     question = sys.argv[1]
-    global reqRecord
     reqRecord = sys.argv[2]
 
     print 'QUESTION SECTION:'
@@ -231,7 +244,19 @@ def main():
     print 'Query time: %s ms' % ((time.time() - startTime) * 1000)
     print 'WHEN: ' + str(time.ctime())
     # print 'MSG SIZE rcvd: ' + str(len(str(response.answer)) + len(str(response.question)))
-    # measureTime()
+    #measureTime()
+    # website = []
+    # resolveTime = []
+    # with open('graphdata.csv', 'rb') as csv_file:
+    #     reader = csv.reader(csv_file)
+    #     graph_dict = dict(reader)
+    # for key,value in graph_dict.items():
+    #     website.append(key)
+    #     resolveTime.append(value)
+    #     print key
+    #     print value
+    # print website
+    # print resolveTime
 
 if __name__ == '__main__':
     main()

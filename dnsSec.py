@@ -189,6 +189,7 @@ def iterativeResolver(hostname,reqRecord,response):
                 ##################
                 keyQuery = dns.message.make_query(queryName,dns.rdatatype.DNSKEY,want_dnssec=True)
                 keyResponse = dns.query.udp(keyQuery,data[-1])
+                print keyResponse
                 # Storing the KSK keys
                 if queryName == '.':
                     ksk_keys = set()
