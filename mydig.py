@@ -211,6 +211,10 @@ def iterativeResolver(hostname,reqRecord,response):
 #         output.close()
 
 def main():
+
+    if len(sys.argv) != 3:
+        print 'Error: Wrong number of arguments provided'
+        exit()
     global question
     question = sys.argv[1]
     global reqRecord

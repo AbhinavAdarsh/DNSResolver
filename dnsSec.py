@@ -154,6 +154,7 @@ def iterativeResolver(hostname,reqRecord,response):
     length = 0
     while len(serverlist) > 0 and x < 5:
         ####################
+        # Preparing query name for each level starting from root
         period = question.split('.')
         queryName = ''
         y = 0
@@ -171,16 +172,23 @@ def iterativeResolver(hostname,reqRecord,response):
         x = x + 1
         length = length + 1
         for server in serverlist:
-                server = str(server)
-                data = server.split(' ')
-            #try:
+            server = str(server)
+            data = server.split(' ')
+            try:
                 query = dns.message.make_query(hostname,dns.rdatatype.A,want_dnssec=True)
+                print data[-1]
+                print '************'
+                if len(data[-1]) > 16:
+                    continue
                 response = dns.query.udp(query,data[-1])
-                #print response.authority[1]
+                print 'length =' + str(len(response.authority))
+                print response.authority[1]
+                # exit()
+                print response.authority[2]
+
                 ##################
                 keyQuery = dns.message.make_query(queryName,dns.rdatatype.DNSKEY,want_dnssec=True)
                 keyResponse = dns.query.udp(keyQuery,data[-1])
-                print keyResponse.answer[0][0]
                 # Storing the KSK keys
                 if queryName == '.':
                     ksk_keys = set()
@@ -189,55 +197,64 @@ def iterativeResolver(hostname,reqRecord,response):
                             ksk_keys.add(str(keyResponse.answer[0][i]))
 
                     if ksk_keys == rootSet:
-                        print 'KSK Validated'
+                        # print 'KSK Validated'
+                        pass
                     else:
                         print 'DNSSec verification failed'
                 else:
                     name = dns.name.from_text(queryName)
-                    if len(keyResponse.answer) == 2:
+                    if len(keyResponse.authority) == 3:
+                        #1 -- RRSet 2 -- RRsig 3 --DNSKeys RRset
+                        #if response.authority
                         dns.dnssec.validate(response.authority[1], response.authority[2], {name: keyResponse.answer[0]})
                         print 'KSK Validation done'
                     else:
                         print 'Error in DNS Key response'
 
-                if len(prevDSrecord) > 0:
-                    for keys in range(0,3):
-                        makeKey = keyResponse.answer[0][i]
-                        #makeKey = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.DNSKEY,keys)
-                        currentDSRecord = dns.dnssec.make_ds(name=queryName,key=makeKey,algorithm='SHA256')
-                        currentDSRecord = str(currentDSRecord)
-                        partcurrentDSRecord = currentDSRecord.split(' ')
-                        prevDSrecord = str(prevDSrecord)
-                        partprevDSrecord = prevDSrecord.split(' ')
-                        print '##############'
-                        print partcurrentDSRecord[-1]
-                        print partprevDSrecord[-1]
-                        print '##############'
-                        if partcurrentDSRecord[-1] == partprevDSrecord[-1]:
-                            print 'Validated DS Record'
-                        else:
-                            print 'DS record not validated'
+                if len(prevDSrecord) > 0 and len(keyResponse.answer) != 0:
+                    try:
+                        for i in range(0,len(keyResponse.answer[0])):
+                            #print keyResponse.answer[0][i]
+                            if '257' in str(keyResponse.answer[0][i]):
+                                makeKey = keyResponse.answer[0][i]
+                                currentDSRecord = dns.dnssec.make_ds(name=queryName,key=makeKey,algorithm='SHA256')
+                                currentDSRecord = str(currentDSRecord)
+                                partcurrentDSRecord = currentDSRecord.split(' ')
+                                prevDSrecord = str(prevDSrecord)
+                                partprevDSrecord = prevDSrecord.split(' ')
+                                # print '##############'
+                                # print partcurrentDSRecord[-1]
+                                # print partprevDSrecord[-1]
+                                # print '##############'
+                                if partcurrentDSRecord[-1] == partprevDSrecord[-1]:
+                                    print 'Validated DS Record'
+                                    break
+                    except dns.dnssec.ValidationFailure:
+                        print 'DS record not validated'
                 else:
-                    print 'At root'
+                    pass
+                    # print 'At root'
                 #After validation, store the current DS record for next validation
                 if len(response.authority) > 0:
                     prevDSrecord = response.authority[1]
                 else:
-                    print 'No DS record in the response'
+                    pass
+                    #print 'No DS record in the response'
                     #exit()
 
                 name = dns.name.from_text(queryName)
                 if len(keyResponse.answer) == 2:
+                    # 1 -- RRset 2 -- RRsig 3 -- RRset
                     dns.dnssec.validate(keyResponse.answer[0], keyResponse.answer[1], {name: keyResponse.answer[0]})
-                    print 'Validation done'
+                    # print 'Validation done'
                 else:
-                    print 'Error in DNS Key response'
+                    print 'Error in DNS Key validation'
 
                 ##################
                 serverlist = response.additional
                 break
 
-            #except BaseException:
+            except BaseException:
                 print 'Error in iterative resolver'
 
         if len(response.answer) != 0:
@@ -268,9 +285,9 @@ def main():
 
     print 'ANSWER SECTION:'
     response = iterativeResolver(sys.argv[1], sys.argv[2],'')
-    for records in response:
-        print records
-
+    # for records in response:
+    #     print type(records)
+    print response[0]
     print 'Query time: %s ms' % ((time.time() - startTime) * 1000)
     print 'WHEN: ' + str(time.ctime())
 
