@@ -9,6 +9,7 @@ stonybrook.edu. 900 IN MX 20 syr-t5220-01.syracuse.stonybrook.edu.
 stonybrook.edu. 900 IN MX 1 sbmta2.cc.stonybrook.edu.
 Query time: 128.051996231 ms
 WHEN: Mon Feb 19 06:14:53 2018
+MSG SIZE rcvd: 35
 
 INPUT2: python digTool.py www.stonybrook.edu NS
 
@@ -21,6 +22,7 @@ stonybrook.edu. 900 IN NS nocnoc.stonybrook.edu.
 stonybrook.edu. 900 IN NS mewho.stonybrook.edu.
 Query time: 102.061986923 ms
 WHEN: Mon Feb 19 06:15:03 2018
+MSG SIZE rcvd: 35
 
 INPUT3: python digTool.py www.stonybrook.edu A
 
@@ -30,5 +32,6 @@ ANSWER SECTION:
 stonybrook.edu. 900 IN A 129.49.2.176
 Query time: 119.905948639 ms
 WHEN: Mon Feb 19 06:16:10 2018
+MSG SIZE rcvd: 34
 
 
