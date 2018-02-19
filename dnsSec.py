@@ -148,7 +148,8 @@ startTime = time.time()
 def iterativeResolver(hostname,reqRecord,response):
 
     serverlist = rootServers
-    prevDSrecord = rootKey
+    prevDSrecord = []
+    rootSet = set(rootKey)
     x = 0
     length = 0
     while len(serverlist) > 0 and x < 5:
@@ -170,26 +171,73 @@ def iterativeResolver(hostname,reqRecord,response):
         x = x + 1
         length = length + 1
         for server in serverlist:
-            server = str(server)
-            data = server.split(' ')
-            try:
-                query = dns.message.make_query(hostname,reqRecord)
+                server = str(server)
+                data = server.split(' ')
+            #try:
+                query = dns.message.make_query(hostname,dns.rdatatype.A,want_dnssec=True)
                 response = dns.query.udp(query,data[-1])
+                #print response.authority[1]
                 ##################
                 keyQuery = dns.message.make_query(queryName,dns.rdatatype.DNSKEY,want_dnssec=True)
                 keyResponse = dns.query.udp(keyQuery,data[-1])
-                # print keyResponse.answer[1]
+                print keyResponse.answer[0][0]
+                # Storing the KSK keys
+                if queryName == '.':
+                    ksk_keys = set()
+                    for i in range(0,3):
+                        if '257' in str(keyResponse.answer[0][i]):
+                            ksk_keys.add(str(keyResponse.answer[0][i]))
 
-                zsk_ksk_keys = set()
+                    if ksk_keys == rootSet:
+                        print 'KSK Validated'
+                    else:
+                        print 'DNSSec verification failed'
+                else:
+                    name = dns.name.from_text(queryName)
+                    if len(keyResponse.answer) == 2:
+                        dns.dnssec.validate(response.authority[1], response.authority[2], {name: keyResponse.answer[0]})
+                        print 'KSK Validation done'
+                    else:
+                        print 'Error in DNS Key response'
 
-                for data in ans[0]:
-                    if '257' in str(data):
-                        zsk_ksk_keys.add(str(data))
+                if len(prevDSrecord) > 0:
+                    for keys in range(0,3):
+                        makeKey = keyResponse.answer[0][i]
+                        #makeKey = dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.DNSKEY,keys)
+                        currentDSRecord = dns.dnssec.make_ds(name=queryName,key=makeKey,algorithm='SHA256')
+                        currentDSRecord = str(currentDSRecord)
+                        partcurrentDSRecord = currentDSRecord.split(' ')
+                        prevDSrecord = str(prevDSrecord)
+                        partprevDSrecord = prevDSrecord.split(' ')
+                        print '##############'
+                        print partcurrentDSRecord[-1]
+                        print partprevDSrecord[-1]
+                        print '##############'
+                        if partcurrentDSRecord[-1] == partprevDSrecord[-1]:
+                            print 'Validated DS Record'
+                        else:
+                            print 'DS record not validated'
+                else:
+                    print 'At root'
+                #After validation, store the current DS record for next validation
+                if len(response.authority) > 0:
+                    prevDSrecord = response.authority[1]
+                else:
+                    print 'No DS record in the response'
+                    #exit()
+
+                name = dns.name.from_text(queryName)
+                if len(keyResponse.answer) == 2:
+                    dns.dnssec.validate(keyResponse.answer[0], keyResponse.answer[1], {name: keyResponse.answer[0]})
+                    print 'Validation done'
+                else:
+                    print 'Error in DNS Key response'
+
                 ##################
                 serverlist = response.additional
                 break
 
-            except BaseException:
+            #except BaseException:
                 print 'Error in iterative resolver'
 
         if len(response.answer) != 0:
