@@ -2,8 +2,6 @@ import dns.name
 import dns.query
 import dns.resolver
 import sys
-import dnslib
-import socket
 import time
 
 topSites = \
@@ -39,101 +37,79 @@ rootServers = ["198.41.0.4","199.9.14.201","192.33.4.12","199.7.91.13","192.203.
 
 startTime = time.time()
 
+def iterativeResolver(hostname,reqRecord,response):
 
-def getIp(hostname,recordType):
-    flag = 0
-    query = dns.message.make_query(hostname,dns.rdatatype.A)
-    for servers in rootServers:
-        try:
-            response = dns.query.udp(query,servers,timeout=0.5,port=53,one_rr_per_rrset=True)
-
-            flag = 1
-            break
-        except BaseException:
-            print 'No response from server. Querying the next rootserver from list'
-
-    if flag == 0:
-        print 'None of the root servers are responding. Exiting the program'
-        exit()
-
-    serverlist = response.additional
-    recurciveInterator(hostname,recordType,serverlist,response)
-
-def recurciveInterator(hostname,recordType,serverlist,response):
-    global finalResponse
+    serverlist = rootServers
     x = 0
-    while not response.answer and x < 4:
+    while len(serverlist) > 0 and x < 4:
         x = x + 1
         for server in serverlist:
             server = str(server)
             data = server.split(' ')
             try:
-                query = dns.message.make_query(hostname,recordType)
+                query = dns.message.make_query(hostname,reqRecord)
                 response = dns.query.udp(query,data[-1])
-                # print response
                 serverlist = response.additional
                 break
 
             except BaseException:
-                print 'Error'
+                print 'Error in iterative resolver'
 
-    if len(response.answer) != 0:
-        answer = str(response.answer[0])
-        data = answer.split(' ')
+        if len(response.answer) != 0:
 
-        if data[3] != 'A' and recordType == 'A':
-            getIp(data[-1],recordType)
-        else:
-            print 'QUESTION SECTION:'
-            for records in response.question:
-                print records
-
-            print 'ANSWER SECTION:'
-            if response.answer:
-                for records in response.answer:
-                    print records
-
-            print 'Query time: %s ms' % ((time.time() - startTime) * 1000)
-            print 'WHEN: ' + str(time.ctime())
-            print 'MSG SIZE rcvd: ' + str(len(str(response.answer)) + len(str(response.question)))
-    else:
-        if not response.additional and not response.answer:
-            if recordType == 'NS' or recordType == 'MX':
-                print 'QUESTION SECTION:'
-                for records in response.question:
-                    print records
-
-                print 'ANSWER SECTION:'
-                for record in response.authority:
-                    print record
-
-                print 'Query time: %s ms' % ((time.time() - startTime) * 1000)
-                print 'WHEN: ' + str(time.ctime())
-                print 'MSG SIZE rcvd: '+str(len(str(response.answer))+len(str(response.question)))
+            answer = str(response.answer[0])
+            data = answer.split(' ')
+            if data[3] == 'CNAME' and reqRecord == 'A':
+                return iterativeResolver(data[-1],'A',response)
             else:
-                answer = str(response.authority[0])
-                data = answer.split(' ')
-
-                if data[3] != 'A' and recordType == 'A':
-                    getIp(data[-1], recordType)
+                return response.answer
 
 
-def measureTime():
-    myDict = {}
-    for url in topSites:
-        sTime = time.time()
-        for i in range(10):
-            getIp(url,'A')
-        elapseTime = (time.time() - sTime) * 1000
-        elapseTime = elapseTime/10
-        myDict[url] = elapseTime
+        elif len(response.additional) > 0:
+            continue
+        else:
+            ans = str(response.authority[0])
+            data = ans.split(' ')
+            serverlist = iterativeResolver(data[-1],'A',response)
 
-    for d in myDict:
-        print d
+
+# def measureTime():
+#     myDict = {}
+#     for url in topSites:
+#         sTime = time.time()
+#         for i in range(1):
+#             getIp(url,'A')
+#         elapseTime = (time.time() - sTime) * 1000
+#         elapseTime = elapseTime/10
+#         myDict[url] = elapseTime
+#
+#     output = open("Output.txt", "w")
+#     print '---------------------'
+#     for d in myDict:
+#         # print d, myDict[d]
+#         # print '---------------------'
+#         output.write(d)
+#         output.write(myDict[d])
+#         output.close()
 
 def main():
-    getIp(sys.argv[1],sys.argv[2])
-    #measureTime()
+    global question
+    question = sys.argv[1]
+    global reqRecord
+    reqRecord = sys.argv[2]
+
+    print 'QUESTION SECTION:'
+    print str(question) + " " + "IN" + " " + str(reqRecord)
+
+    print 'ANSWER SECTION:'
+    response = iterativeResolver(sys.argv[1], sys.argv[2],'')
+    for records in response:
+        print records
+
+    print 'Query time: %s ms' % ((time.time() - startTime) * 1000)
+    print 'WHEN: ' + str(time.ctime())
+    # print 'MSG SIZE rcvd: ' + str(len(str(response.answer)) + len(str(response.question)))
+    # measureTime()
 
 if __name__ == '__main__':
     main()
