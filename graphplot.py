@@ -36,7 +36,6 @@ np.roll(website,-1)
 plt.legend(loc='upper left')
 
 plt.xlabel('Alexa Top 25 Website List')
-plt.ylabel('Resolution Time')
+plt.ylabel('Resolution Time (in ms)')
 plt.show()
-
 

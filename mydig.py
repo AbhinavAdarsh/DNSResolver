@@ -34,8 +34,8 @@ def iterativeResolver(hostname,reqRecord,response):
                 print 'Server not responding. Trying the next server...'
 
         #Error Checking : If none of the servers are responding
-        # if flag == 0:
-        #     exit()
+        if flag == 0:
+            exit()
         #Check if answer section contains the resolved IP or CNAME
         if len(response.answer) != 0:
 
@@ -65,11 +65,16 @@ def main():
 
     reqRecord = sys.argv[2]
     question = str(sys.argv[1])
-    data = question.split('.')
-    query = ''
-    for d in data[1:]:
-        query = query + d + '.'
 
+    data = question.split('.')
+    if data[0] == 'www':
+        query = ''
+        for d in data[1:]:
+            query = query + d + '.'
+    else:
+        query = question
+
+    print (question)
     print 'QUESTION SECTION:'
     print str(question) + " " + "IN" + " " + str(reqRecord)
 
